@@ -372,6 +372,16 @@ def processing_single_scene(args):
                 continue
             transformed = np.matmul(extrinsic[i+1], [points3d[p3d_id].xyz[0], points3d[p3d_id].xyz[1], points3d[p3d_id].xyz[2], 1])
             zs.append(np.asscalar(transformed[2]))
+        
+        if(len(zs) < 10):
+            depth_min = 0.01
+            depth_max = 100
+            depth_num = 192 if args.max_d == 0 else args.max_d
+            depth_interval = (depth_max - depth_min) / (depth_num - 1) / args.interval_scale
+            depth_ranges[i+1] = (depth_min, depth_interval, depth_num, depth_max)
+            print('img ' + str(i) + ' has no point! use default parameters: %f %f %f %f' % (depth_min, depth_interval, depth_num, depth_max))
+            continue
+
         zs_sorted = sorted(zs)
         # relaxed depth range
         depth_min = zs_sorted[int(len(zs) * .01)] * 0.75
