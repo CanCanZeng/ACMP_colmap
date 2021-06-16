@@ -1,0 +1,58 @@
+build*/
+
+popsift/playground/try-gauss
+popsift/playground/try-gauss-param
+popsift/playground/try-gauss-interpolate
+popsift/playground/try-libav
+oxford
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Support files
+*.nvvp
+
+# Temporary files
+.DS_Store
+
+# Downloaded archives for tests.
+*.tgz
+
+# VS Code files
+.vscode
+
+# Export files
+export/EasyARPopSift.jar
+export/java/*
+
+*.user
