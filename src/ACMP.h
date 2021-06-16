@@ -1,20 +1,12 @@
-#ifndef _ACMP_H_
-#define _ACMP_H_
+#pragma once
 
-#include "main.h"
+#include <unordered_map>
+#include <glog/logging.h>
 
-int readDepthDmb(const std::string file_path, cv::Mat_<float> &depth);
-int readNormalDmb(const std::string file_path, cv::Mat_<cv::Vec3f> &normal);
-int writeDepthDmb(const std::string file_path, const cv::Mat_<float> depth);
-int writeNormalDmb(const std::string file_path, const cv::Mat_<cv::Vec3f> normal);
+#include "colmap_interface/endian.h"
+#include "./types.h"
 
-Camera ReadCamera(const std::string &cam_path);
-void  RescaleImageAndCamera(cv::Mat_<cv::Vec3b> &src, cv::Mat_<cv::Vec3b> &dst, cv::Mat_<float> &depth, Camera &camera);
-float3 Get3DPointonWorld(const int x, const int y, const float depth, const Camera camera);
 float3 Get3DPointonRefCam(const int x, const int y, const float depth, const Camera camera);
-void ProjectonCamera(const float3 PointX, const Camera camera, float2 &point, float &depth);
-float GetAngle(const cv::Vec3f &v1, const cv::Vec3f &v2);
-void StoreColorPlyFileBinaryPointCloud (const std::string &plyFilePath, const std::vector<PointList> &pc);
 
 #define CUDA_SAFE_CALL(error) CudaSafeCall(error, __FILE__, __LINE__)
 #define CUDA_CHECK_ERROR() CudaCheckError(__FILE__, __LINE__)
@@ -46,7 +38,7 @@ struct PatchMatchParams {
 
 class ACMP {
 public:
-    ACMP();
+    ACMP(const std::unordered_map<int, std::string>& _image_id_to_image_name, const std::unordered_map<int, Camera>& _image_id_to_camera, const std::string& _depth_folder, const std::string& _normal_folder, const std::string& _image_folder, const std::string& _cost_folder);
     ~ACMP();
 
     void InuputInitialization(const std::string &dense_folder, const Problem &problem);
@@ -92,6 +84,9 @@ private:
     float *depths_cuda;
     float4 *prior_planes_cuda;
     unsigned int *plane_masks_cuda;
-};
 
-#endif // _ACMP_H_
+public:
+    const std::unordered_map<int, std::string>& image_id_to_image_name;
+    const std::unordered_map<int, Camera>& image_id_to_camera;
+    const std::string depth_folder, normal_folder, cost_folder, image_folder;
+};

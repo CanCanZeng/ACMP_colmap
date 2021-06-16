@@ -1,11 +1,26 @@
 cmake_minimum_required (VERSION 2.8)
 project (ACMP)
 
+#--- CMake configuration
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+
 find_package(CUDA 6.0 REQUIRED ) # For Cuda Managed Memory and c++11
 find_package(OpenCV REQUIRED )
+find_package(Eigen3 REQUIRED)
 
-include_directories(${OpenCV_INCLUDE_DIRS})
-include_directories(.)
+include_directories(
+    ${OpenCV_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
+    )
+include_directories(.
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/src
+    )
+
+# glog
+find_package(Gflags REQUIRED)
+find_package(Glog REQUIRED)
+include_directories(${GFLAGS_INCLUDE_DIRS} ${GLOG_INCLUDE_DIRS})
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3 --use_fast_math --maxrregcount=128 --ptxas-options=-v -std=c++11 --compiler-options -Wall)
 
@@ -25,20 +40,31 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-
-# For compilation ...
-# Specify target & source files to compile it from
-cuda_add_executable(
-    ACMP
-    main.h
-    ACMP.h
-    ACMP.cpp
-    ACMP.cu
-    main.cpp
+cuda_add_library(ACMP
+    src/ACMP.h
+    src/ACMP.cpp
+    src/ACMP.cu
     )
 
-# For linking ...
-# Specify target & libraries to link it with
-target_link_libraries(ACMP
+add_executable(main_depth_estimation
+    exe/main_depth_estimation.cpp
+    src/colmap_interface/colmap_interface.cpp
+    )
+
+target_link_libraries(main_depth_estimation
+    ACMP
     ${OpenCV_LIBS}
+    ${GFLAGS_LIBRARIES}
+    ${GLOG_LIBRARIES}
+    )
+
+add_executable(main_depth_fusion
+    exe/main_depth_fusion.cpp
+    src/colmap_interface/colmap_interface.cpp
+    )
+
+target_link_libraries(main_depth_fusion
+    ${OpenCV_LIBS}
+    ${GFLAGS_LIBRARIES}
+    ${GLOG_LIBRARIES}
     )
