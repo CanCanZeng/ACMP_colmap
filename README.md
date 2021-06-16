@@ -1,3 +1,12 @@
+# NOTE
+*--------------------------------------------------------*
+
+This project is modified from [ACMP](https://github.com/GhiXu/ACMP.git)
+
+I just port it to COLMAP project type, thanks GhiXu for his/her great job!
+
+*--------------------------------------------------------*
+
 # ACMP
 [News] The code for [ACMH](https://github.com/GhiXu/ACMH) is released!!!  
 [News] The code for [ACMM](https://github.com/GhiXu/ACMM) is released!!!
