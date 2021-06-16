@@ -31,6 +31,9 @@ The code has been tested on Ubuntu 14.04 with GTX Titan X.
 * [Cuda](https://developer.nvidia.com/zh-cn/cuda-downloads) >= 6.0
 * [OpenCV](https://opencv.org/) >= 2.4
 * [cmake](https://cmake.org/)
+* [Eigen](https://gitlab.com/libeigen/eigen)
+* [Glog](https://github.com/google/glog)
+* [Gflag](https://github.com/gflags/gflags.git)
 ## Usage
 * Complie ACMP
 ```  
