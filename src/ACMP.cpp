@@ -146,10 +146,13 @@ float3 Get3DPointonRefCam(const int x, const int y, const float depth, const Cam
 }
 
 
-void ACMP::SetGeomConsistencyParams()
+void ACMP::SetGeomConsistencyParams(bool multi_geometry)
 {
     params.geom_consistency = true;
     params.max_iterations = 2;
+    if(multi_geometry) {
+        params.multi_geometry = true;
+    }
 }
 
 void ACMP::SetPlanarPriorParams()
@@ -224,14 +227,15 @@ void ACMP::InuputInitialization(const std::string &dense_folder, const Problem &
     if (params.geom_consistency) {
         depths.clear();
 
-        std::string depth_path = dense_folder + "/" + depth_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + ".photometric.bin";
+        std::string suffix = params.multi_geometry ? ".geometric.bin" : ".photometric.bin";
+        std::string depth_path = dense_folder + "/" + depth_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + suffix;
         cv::Mat_<float> ref_depth;
         ReadMap(depth_path, ref_depth);
         depths.push_back(ref_depth);
 
         size_t num_src_images = problem.src_image_ids.size();
         for (size_t i = 0; i < num_src_images; ++i) {
-            std::string depth_path = dense_folder + "/" + depth_folder + "/" + image_id_to_image_name.at(problem.src_image_ids[i]) + ".photometric.bin";
+            std::string depth_path = dense_folder + "/" + depth_folder + "/" + image_id_to_image_name.at(problem.src_image_ids[i]) + suffix;
             cv::Mat_<float> depth;
             ReadMap(depth_path, depth);
             depths.push_back(depth);
@@ -310,9 +314,10 @@ void ACMP::CudaSpaceInitialization(const std::string &dense_folder, const Proble
         cudaMalloc((void**)&texture_depths_cuda, sizeof(cudaTextureObjects));
         cudaMemcpy(texture_depths_cuda, &texture_depths_host, sizeof(cudaTextureObjects), cudaMemcpyHostToDevice);
 
-        std::string depth_path = dense_folder + "/" + depth_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + ".photometric.bin";
-        std::string normal_path = dense_folder + "/" + normal_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + ".photometric.bin";
-        std::string cost_path = dense_folder + "/" + cost_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + ".photometric.bin";
+        std::string suffix = params.multi_geometry ? ".geometric.bin" : ".photometric.bin";
+        std::string depth_path = dense_folder + "/" + depth_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + suffix;
+        std::string normal_path = dense_folder + "/" + normal_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + suffix;
+        std::string cost_path = dense_folder + "/" + cost_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + suffix;
         cv::Mat_<float> ref_depth;
         cv::Mat_<cv::Vec3f> ref_normal;
         cv::Mat_<float> ref_cost;

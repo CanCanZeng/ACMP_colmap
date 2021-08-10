@@ -14,7 +14,7 @@ void CreateProblems(const Model& model, std::vector<Problem>& problems) {
     }
 }
 
-void ProcessProblem(const Problem &problem, const Model& model, bool geom_consistency, bool planar_prior)
+void ProcessProblem(const Problem &problem, const Model& model, bool geom_consistency, bool planar_prior, bool multi_geometry = false)
 {
     std::string dense_folder = model.root_folder;
     std::string imageName = model.image_id_to_image_name.at(problem.ref_image_id);
@@ -23,7 +23,7 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
 
     ACMP acmp(model.image_id_to_image_name, model.image_id_to_camera, model.depth_folder, model.normal_folder, model.image_folder, model.cost_folder);
     if (geom_consistency) {
-        acmp.SetGeomConsistencyParams();
+        acmp.SetGeomConsistencyParams(multi_geometry);
     }
     acmp.InuputInitialization(dense_folder, problem);
 
@@ -176,10 +176,19 @@ int main(int argc, char** argv)
         ProcessProblem(problems[i], model, geom_consistency, planar_prior);
     }
 
+    bool multi_geometry = false;
+    int geom_iteration = 2;
     geom_consistency = true;
     planar_prior = false;
-    for (size_t i = 0; i < num_images; ++i) {
-        ProcessProblem(problems[i], model, geom_consistency, planar_prior);
+    for(int geom_iter = 0; geom_iter < geom_iteration; ++geom_iter) {
+        if(geom_iter == 0) {
+            multi_geometry = false;
+        } else {
+            multi_geometry = true;
+        }
+        for (size_t i = 0; i < num_images; ++i) {
+            ProcessProblem(problems[i], model, geom_consistency, planar_prior, multi_geometry);
+        }
     }
 
     double t_end = cv::getTickCount();

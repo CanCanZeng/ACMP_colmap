@@ -32,7 +32,12 @@ struct PatchMatchParams {
     float depth_max = 1.0f;
     float disparity_min = 0.0f;
     float disparity_max = 1.0f;
+    // 下面有三个参数会使得程序处在很多中模式下，一般
+    // 1. 用平面先验，去掉几何一致
+    // 2. 不用平面先验，加上几何一致，但是读入的先验是上一次photometric得到的深度图
+    // 3. 不用平面先验，加上几何一致，并且读入的是上一次geometric得到的深度图
     bool geom_consistency = false;
+    bool multi_geometry = false; // 如果之前有过使用几何一致性才需要使用这个参数，这个参数会控制预先读入的数据是带几何一致的还是不带。
     bool planar_prior = false;
 };
 
@@ -45,7 +50,7 @@ public:
     void Colmap2MVS(const std::string &dense_folder, std::vector<Problem> &problems);
     void CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem);
     void RunPatchMatch();
-    void SetGeomConsistencyParams();
+    void SetGeomConsistencyParams(bool multi_geometry = false);
     void SetPlanarPriorParams();
     int GetReferenceImageWidth();
     int GetReferenceImageHeight();
