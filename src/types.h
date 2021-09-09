@@ -72,25 +72,37 @@ void ReadMap(const std::string& path, cv::Mat_<T> &data) {
 
     CHECK_GT(width, 0);
     CHECK_GT(height, 0);
-    CHECK_GT(depth, 0);
-    std::vector<T> raw_data(width * height);  // depth should be 1 since if T=cv::Vec3f, opencv use float and 3 channel
+    CHECK_EQ(depth, data.channels());
+    std::vector<uchar> raw_data(width * height * sizeof (T));
 
     std::fstream binary_file(path, std::ios::in | std::ios::binary);
     CHECK(binary_file.is_open()) << path;
     binary_file.seekg(pos);
-    colmap::ReadBinaryLittleEndian<T>(&binary_file, &raw_data);
+    colmap::ReadBinaryLittleEndian<uchar>(&binary_file, &raw_data);
     binary_file.close();
 
-    data.create(height, width);
-    memcpy(static_cast<void*>(data.data), static_cast<void*>(raw_data.data()), width * height * sizeof (T));
+    size_t one_channel_bytes = width * height * sizeof (T) / depth;
+    std::vector<cv::Mat> channels(depth);
+    for(int i = 0; i < depth; i++) {
+        channels[i] = cv::Mat::zeros(height, width, CV_MAKETYPE(data.depth(), 1));
+        memcpy(channels[i].data, raw_data.data() + i * one_channel_bytes, one_channel_bytes);
+    }
+    cv::merge(channels, data);
 }
 
 template <typename T>
 void WriteMap(const std::string& path, cv::Mat_<T> &data) {
     size_t width = data.cols, height = data.rows, depth = data.channels();
 
-    std::vector<T> raw_data(width * height);  // depth should be 1 since if T=cv::Vec3f, opencv use float and 3 channel
-    memcpy(static_cast<void*>(raw_data.data()), static_cast<void*>(data.data), width * height * sizeof (T));
+    std::vector<cv::Mat> channels;
+    cv::split(data, channels);
+
+    size_t one_channel_bytes = width * height * sizeof (T) / depth;
+    std::vector<uchar> raw_data(width * height * sizeof (T));
+    for(size_t i = 0; i < depth; i++) {
+        uchar* p_raw_data = &(raw_data[i * one_channel_bytes]);
+        memcpy(p_raw_data, channels[i].data, one_channel_bytes);
+    }
 
     std::fstream text_file(path, std::ios::out);
     CHECK(text_file.is_open()) << path;
@@ -99,6 +111,6 @@ void WriteMap(const std::string& path, cv::Mat_<T> &data) {
 
     std::fstream binary_file(path, std::ios::out | std::ios::binary | std::ios::app);
     CHECK(binary_file.is_open()) << path;
-    colmap::WriteBinaryLittleEndian<T>(&binary_file, raw_data);
+    colmap::WriteBinaryLittleEndian<uchar>(&binary_file, raw_data);
     binary_file.close();
 }
