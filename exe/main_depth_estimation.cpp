@@ -163,6 +163,7 @@ int main(int argc, char** argv)
     std::string dense_folder = argv[1];
     Model model(dense_folder, "sparse", "stereo/depth_maps", "stereo/normal_maps", "stereo/cost_maps", "images");
     model.Read();
+    model.ReduceMemory();
 
     std::vector<Problem> problems;
     CreateProblems(model, problems);
