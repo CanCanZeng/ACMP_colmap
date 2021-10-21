@@ -317,14 +317,11 @@ void ACMP::CudaSpaceInitialization(const std::string &dense_folder, const Proble
         std::string suffix = params.multi_geometry ? ".geometric.bin" : ".photometric.bin";
         std::string depth_path = dense_folder + "/" + depth_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + suffix;
         std::string normal_path = dense_folder + "/" + normal_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + suffix;
-        std::string cost_path = dense_folder + "/" + cost_folder + "/" + image_id_to_image_name.at(problem.ref_image_id) + suffix;
         cv::Mat_<float> ref_depth;
         cv::Mat_<cv::Vec3f> ref_normal;
-        cv::Mat_<float> ref_cost;
         ReadMap(depth_path, ref_depth);
         depths.push_back(ref_depth);
         ReadMap(normal_path, ref_normal);
-        ReadMap(cost_path, ref_cost);
         int width = ref_depth.cols;
         int height = ref_depth.rows;
         for (int col = 0; col < width; ++col) {
@@ -336,12 +333,10 @@ void ACMP::CudaSpaceInitialization(const std::string &dense_folder, const Proble
                 plane_hypothesis.z = ref_normal(row, col)[2];
                 plane_hypothesis.w = ref_depth(row, col);
                 plane_hypotheses_host[center] = plane_hypothesis;
-                costs_host[center] = ref_cost(row, col);
             }
         }
 
         cudaMemcpy(plane_hypotheses_cuda, plane_hypotheses_host, sizeof(float4) * width * height, cudaMemcpyHostToDevice);
-        cudaMemcpy(costs_cuda, costs_host, sizeof(float) * width * height, cudaMemcpyHostToDevice);
     }
 }
 
