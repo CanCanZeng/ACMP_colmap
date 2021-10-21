@@ -127,6 +127,15 @@ float GetAngle( const cv::Vec3f &v1, const cv::Vec3f &v2 )
     return angle;
 }
 
+cv::Vec3f TransformNormal(const Camera& camera, cv::Vec3f normal_local)
+{
+    cv::Vec3f normal_global;
+    normal_global[0] = camera.R[0] * normal_local[0] + camera.R[3] * normal_local[1] + camera.R[6] * normal_local[2];
+    normal_global[1] = camera.R[1] * normal_local[0] + camera.R[4] * normal_local[1] + camera.R[7] * normal_local[2];
+    normal_global[2] = camera.R[2] * normal_local[0] + camera.R[5] * normal_local[1] + camera.R[8] * normal_local[2];
+    return normal_global;
+}
+
 void RunFusion(const Model& model, bool geom_consistency)
 {
     std::unordered_map<int, cv::Mat> images;
@@ -194,6 +203,7 @@ void RunFusion(const Model& model, bool geom_consistency)
                     continue;
                 float ref_depth = ref_depthmap.at<float>(r, c);
                 cv::Vec3f ref_normal = ref_normalmap.at<cv::Vec3f>(r, c);
+                ref_normal = TransformNormal(ref_camera, ref_normal);
 
                 if (ref_depth <= 0.0)
                     continue;
@@ -226,6 +236,7 @@ void RunFusion(const Model& model, bool geom_consistency)
 
                         float src_depth = src_depthmap.at<float>(src_r, src_c);
                         cv::Vec3f src_normal = src_normalmap.at<cv::Vec3f>(src_r, src_c);
+                        src_normal = TransformNormal(src_camera, src_normal);
                         if (src_depth <= 0.0)
                             continue;
 

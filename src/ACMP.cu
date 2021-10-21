@@ -295,26 +295,6 @@ __device__ float2 ComputeCorrespondingPoint(const float *H, const int2 p)
     return make_float2(pt.x / pt.z, pt.y / pt.z);
 }
 
-__device__ float4 TransformNormal(const Camera camera, float4 plane_hypothesis)
-{
-    float4 transformed_normal;
-    transformed_normal.x = camera.R[0] * plane_hypothesis.x + camera.R[3] * plane_hypothesis.y + camera.R[6] * plane_hypothesis.z;
-    transformed_normal.y = camera.R[1] * plane_hypothesis.x + camera.R[4] * plane_hypothesis.y + camera.R[7] * plane_hypothesis.z;
-    transformed_normal.z = camera.R[2] * plane_hypothesis.x + camera.R[5] * plane_hypothesis.y + camera.R[8] * plane_hypothesis.z;
-    transformed_normal.w = plane_hypothesis.w;
-    return transformed_normal;
-}
-
-__device__ float4 TransformNormal2RefCam(const Camera camera, float4 plane_hypothesis)
-{
-    float4 transformed_normal;
-    transformed_normal.x = camera.R[0] * plane_hypothesis.x + camera.R[1] * plane_hypothesis.y + camera.R[2] * plane_hypothesis.z;
-    transformed_normal.y = camera.R[3] * plane_hypothesis.x + camera.R[4] * plane_hypothesis.y + camera.R[5] * plane_hypothesis.z;
-    transformed_normal.z = camera.R[6] * plane_hypothesis.x + camera.R[7] * plane_hypothesis.y + camera.R[8] * plane_hypothesis.z;
-    transformed_normal.w = plane_hypothesis.w;
-    return transformed_normal;
-}
-
 __device__ float ComputeBilateralWeight(const float x_dist, const float y_dist, const float pix, const float center_pix, const float sigma_spatial, const float sigma_color)
 {
     const float spatial_dist = sqrt(x_dist * x_dist + y_dist * y_dist);
@@ -522,7 +502,6 @@ __global__ void RandomInitialization(cudaTextureObjects *texture_objects, Camera
 
     if (params.geom_consistency) {
         float4 plane_hypothesis = plane_hypotheses[center];
-        plane_hypothesis = TransformNormal2RefCam(cameras[0], plane_hypothesis);
         float depth = plane_hypothesis.w;
         plane_hypothesis.w = GetDistance2Origin(cameras[0], p, depth, plane_hypothesis);
         plane_hypotheses[center] = plane_hypothesis;
@@ -1036,7 +1015,6 @@ __global__ void GetDepthandNormal(Camera *cameras, float4 *plane_hypotheses, con
 
     const int center = p.y * width + p.x;
     plane_hypotheses[center].w = ComputeDepthfromPlaneHypothesis(cameras[0], plane_hypotheses[center], p);
-    plane_hypotheses[center] = TransformNormal(cameras[0], plane_hypotheses[center]);
 }
 
 __device__ void CheckerboardFilter(const Camera *cameras, float4 *plane_hypotheses, float *costs, const int2 p)
