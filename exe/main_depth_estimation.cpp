@@ -21,7 +21,7 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
     std::cout << "Processing image " << imageName << "..." << std::endl;
     cudaSetDevice(0);
 
-    ACMP acmp(model.image_id_to_image_name, model.image_id_to_camera, model.depth_folder, model.normal_folder, model.image_folder, model.cost_folder);
+    ACMP acmp(model.image_id_to_image_name, model.image_id_to_camera, model.depth_folder, model.normal_folder, model.image_folder);
     if (geom_consistency) {
         acmp.SetGeomConsistencyParams(multi_geometry);
     }
@@ -35,7 +35,7 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
 
     cv::Mat_<float> depths = cv::Mat::zeros(height, width, CV_32FC1);
     cv::Mat_<cv::Vec3f> normals = cv::Mat::zeros(height, width, CV_32FC3);
-    cv::Mat_<float> costs = cv::Mat::zeros(height, width, CV_32FC1);
+//    cv::Mat_<float> costs = cv::Mat::zeros(height, width, CV_32FC1);
 
     for (int col = 0; col < width; ++col) {
         for (int row = 0; row < height; ++row) {
@@ -43,7 +43,7 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
             float4 plane_hypothesis = acmp.GetPlaneHypothesis(center);
             depths(row, col) = plane_hypothesis.w;
             normals(row, col) = cv::Vec3f(plane_hypothesis.x, plane_hypothesis.y, plane_hypothesis.z);
-            costs(row, col) = acmp.GetCost(center);
+//            costs(row, col) = acmp.GetCost(center);
         }
     }
 
@@ -128,7 +128,7 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
                 float4 plane_hypothesis = acmp.GetPlaneHypothesis(center);
                 depths(row, col) = plane_hypothesis.w;
                 normals(row, col) = cv::Vec3f(plane_hypothesis.x, plane_hypothesis.y, plane_hypothesis.z);
-                costs(row, col) = acmp.GetCost(center);
+//                costs(row, col) = acmp.GetCost(center);
             }
         }
     }
@@ -139,10 +139,8 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
     }
     std::string depth_path = dense_folder + "/" + model.depth_folder + "/" + imageName + suffix;
     std::string normal_path = dense_folder + "/" + model.normal_folder + "/" + imageName + suffix;
-    std::string cost_path = dense_folder + "/" + model.cost_folder + "/" + imageName + suffix;
     WriteMap(depth_path, depths);
     WriteMap(normal_path, normals);
-    WriteMap(cost_path, costs);
     std::cout << "Processing image " << imageName << " done!" << std::endl;
 }
 
@@ -161,7 +159,7 @@ int main(int argc, char** argv)
     }
 
     std::string dense_folder = argv[1];
-    Model model(dense_folder, "sparse", "stereo/depth_maps", "stereo/normal_maps", "stereo/cost_maps", "images");
+    Model model(dense_folder, "sparse", "stereo/depth_maps", "stereo/normal_maps", "images");
     model.Read();
     model.ReduceMemory();
 

@@ -82,11 +82,10 @@ public:
     const std::string model_folder = "sparse";
     const std::string depth_folder = "stereo/depth_maps";
     const std::string normal_folder = "stereo/normal_maps";
-    const std::string cost_folder = "stereo/cost_maps";
     const std::string image_folder = "images";
 
-    Model(const std::string& _root_folder, const std::string& _model_folder, const std::string& _depth_folder, const std::string& _normal_folder, const std::string& _cost_folder, const std::string& _image_folder)
-        :root_folder(_root_folder), model_folder(_model_folder), depth_folder(_depth_folder), normal_folder(_normal_folder), cost_folder(_cost_folder), image_folder(_image_folder)
+    Model(const std::string& _root_folder, const std::string& _model_folder, const std::string& _depth_folder, const std::string& _normal_folder, const std::string& _image_folder)
+        :root_folder(_root_folder), model_folder(_model_folder), depth_folder(_depth_folder), normal_folder(_normal_folder), image_folder(_image_folder)
     {}
 
     // For each image, determine the maximally overlapping images, sorted based on

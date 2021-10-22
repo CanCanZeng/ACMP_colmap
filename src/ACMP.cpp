@@ -96,8 +96,8 @@ void CudaCheckError(const char* file, const int line) {
   }
 }
 
-ACMP::ACMP(const std::unordered_map<int, std::string>& _image_id_to_image_name, const std::unordered_map<int, Camera> &_image_id_to_camera, const std::string &_depth_folder, const std::string &_normal_folder, const std::string &_image_folder, const std::string &_cost_folder)
-    :image_id_to_image_name(_image_id_to_image_name), image_id_to_camera(_image_id_to_camera), depth_folder(_depth_folder), normal_folder(_normal_folder), cost_folder(_cost_folder), image_folder(_image_folder){}
+ACMP::ACMP(const std::unordered_map<int, std::string>& _image_id_to_image_name, const std::unordered_map<int, Camera> &_image_id_to_camera, const std::string &_depth_folder, const std::string &_normal_folder, const std::string &_image_folder)
+    :image_id_to_image_name(_image_id_to_image_name), image_id_to_camera(_image_id_to_camera), depth_folder(_depth_folder), normal_folder(_normal_folder), image_folder(_image_folder){}
 
 ACMP::~ACMP()
 {

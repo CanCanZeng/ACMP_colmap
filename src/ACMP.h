@@ -43,7 +43,7 @@ struct PatchMatchParams {
 
 class ACMP {
 public:
-    ACMP(const std::unordered_map<int, std::string>& _image_id_to_image_name, const std::unordered_map<int, Camera>& _image_id_to_camera, const std::string& _depth_folder, const std::string& _normal_folder, const std::string& _image_folder, const std::string& _cost_folder);
+    ACMP(const std::unordered_map<int, std::string>& _image_id_to_image_name, const std::unordered_map<int, Camera>& _image_id_to_camera, const std::string& _depth_folder, const std::string& _normal_folder, const std::string& _image_folder);
     ~ACMP();
 
     void InuputInitialization(const std::string &dense_folder, const Problem &problem);
@@ -93,5 +93,5 @@ private:
 public:
     const std::unordered_map<int, std::string>& image_id_to_image_name;
     const std::unordered_map<int, Camera>& image_id_to_camera;
-    const std::string depth_folder, normal_folder, cost_folder, image_folder;
+    const std::string depth_folder, normal_folder, image_folder;
 };

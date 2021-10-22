@@ -393,7 +393,7 @@ bool Model::Read(){
     subfolders.insert("");
     std::string outputfolder;
     for(const auto& subfolder : subfolders) {
-        for(const auto& folder2 : {depth_folder, normal_folder, cost_folder}) {
+        for(const auto& folder2 : {depth_folder, normal_folder}) {
             outputfolder = root_folder + "/" + folder2 + "/" + subfolder;
             CreateFolder(outputfolder);
         }
