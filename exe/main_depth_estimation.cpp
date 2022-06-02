@@ -14,7 +14,7 @@ void CreateProblems(const Model& model, std::vector<Problem>& problems) {
     }
 }
 
-void ProcessProblem(const Problem &problem, const Model& model, bool geom_consistency, bool planar_prior, bool multi_geometry = false)
+void ProcessProblem(const Problem &problem, const Model& model, bool geom_consistency, bool planar_prior, bool multi_geometry = false, int depthmap_max_resolution = 3200)
 {
     std::string dense_folder = model.root_folder;
     std::string imageName = model.image_idx_to_image_name.at(problem.ref_image_id);
@@ -22,6 +22,7 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
     cudaSetDevice(0);
 
     ACMP acmp(model.image_idx_to_image_name, model.image_idx_to_camera, model.depth_folder, model.normal_folder, model.image_folder);
+    acmp.SetMaxImageSize(depthmap_max_resolution);
     if (geom_consistency) {
         acmp.SetGeomConsistencyParams(multi_geometry);
     }
@@ -153,12 +154,14 @@ int main(int argc, char** argv)
     FLAGS_colorlogtostderr = true;
     FLAGS_v = 2;
 
-    if (argc < 2) {
-        std::cout << "USAGE: ACMP dense_folder" << std::endl;
+    if (argc < 3) {
+        std::cout << "USAGE: ACMP dense_folder depthmap_max_resolution" << std::endl;
         return -1;
     }
 
     std::string dense_folder = argv[1];
+    int depthmap_max_resolution = std::stoi(argv[2]);
+
     Model model(dense_folder, "sparse", "stereo/depth_maps", "stereo/normal_maps", "images");
     model.Read();
     model.ReduceMemory();
@@ -172,7 +175,7 @@ int main(int argc, char** argv)
     bool geom_consistency = false;
     bool planar_prior = true;
     for (size_t i = 0; i < num_images; ++i) {
-        ProcessProblem(problems[i], model, geom_consistency, planar_prior);
+        ProcessProblem(problems[i], model, geom_consistency, planar_prior, false, depthmap_max_resolution);
     }
 
     bool multi_geometry = false;
@@ -186,7 +189,7 @@ int main(int argc, char** argv)
             multi_geometry = true;
         }
         for (size_t i = 0; i < num_images; ++i) {
-            ProcessProblem(problems[i], model, geom_consistency, planar_prior, multi_geometry);
+            ProcessProblem(problems[i], model, geom_consistency, planar_prior, multi_geometry, depthmap_max_resolution);
         }
     }
 

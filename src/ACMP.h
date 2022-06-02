@@ -94,4 +94,6 @@ public:
     const std::unordered_map<int, std::string>& image_id_to_image_name;
     const std::unordered_map<int, Camera>& image_id_to_camera;
     const std::string depth_folder, normal_folder, image_folder;
+
+    void SetMaxImageSize(int max_image_size) { params.max_image_size = max_image_size; }
 };
