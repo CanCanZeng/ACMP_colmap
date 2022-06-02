@@ -38,6 +38,7 @@ struct Camera {
 };
 
 struct Image {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     std::string name;
     image_t image_id;
     camera_t camera_id;
@@ -57,6 +58,7 @@ struct Image {
 };
 
 struct Point3D {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Eigen::Vector3d xyz;
     Eigen::Vector3ub color;
     double error;
@@ -64,19 +66,19 @@ struct Point3D {
 };
 
 void ReadCamerasBinary(std::unordered_map<camera_t, Camera>& cameras, const std::string& path);
-void ReadImagesBinary(std::unordered_map<image_t, Image>& images, const std::string& path);
+void ReadImagesBinary(std::vector<std::pair<image_t, Image>> &images, const std::string& path);
 void ReadPoints3DBinary(std::unordered_map<point3D_t, Point3D>& points3D, const std::string& path);
 
 void ReadCamerasTxt(std::unordered_map<camera_t, Camera>& cameras, const std::string& path);
-void ReadImagesTxt(std::unordered_map<image_t, Image>& images, const std::string& path);
+void ReadImagesTxt(std::vector<std::pair<image_t, Image>> &images, const std::string& path);
 void ReadPoints3DTxt(std::unordered_map<point3D_t, Point3D>& points3D, const std::string& path);
 } // namespace colmap
 
 class Model {
 public:
-    std::unordered_map<int, std::string> image_id_to_image_name;
-    std::unordered_map<int, Camera> image_id_to_camera;
-    std::unordered_map<int, std::vector<int>> covis_vec;
+    std::unordered_map<int, std::string> image_idx_to_image_name;
+    std::unordered_map<int, Camera> image_idx_to_camera;
+    std::unordered_map<int, std::vector<int>> covis_vec;  // ref_idx ===> src_indices
 
     std::string root_folder;
     const std::string model_folder = "sparse";
@@ -108,10 +110,10 @@ public:
     void ReduceMemory();
 
 private:
-    std::unordered_map<colmap::camera_t, colmap::Camera> cameras;
-    std::unordered_map<colmap::image_t, colmap::Image> images;
-    std::unordered_map<colmap::point3D_t, colmap::Point3D> points;
-    std::unordered_map<int, std::pair<double, double>> depth_ranges;
+    std::unordered_map<colmap::camera_t, colmap::Camera> cameras;     // id ===> camera
+    std::unordered_map<colmap::image_t, colmap::Image> images;        // idx ===> image
+    std::unordered_map<colmap::point3D_t, colmap::Point3D> points;    // id ===> point
+    std::unordered_map<int, std::pair<double, double>> depth_ranges;  // idx ===> (min_depth, max_depth)
 };
 
 
@@ -140,3 +142,7 @@ T Percentile(const std::vector<T>& elems, const double p) {
 
     return ordered_elems.at(percentile_idx);
 }
+
+
+void WritePointsVisibility(const std::string& path,
+                           const std::vector<std::vector<int>>& points_visibility);

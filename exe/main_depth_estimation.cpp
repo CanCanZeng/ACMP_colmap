@@ -17,11 +17,11 @@ void CreateProblems(const Model& model, std::vector<Problem>& problems) {
 void ProcessProblem(const Problem &problem, const Model& model, bool geom_consistency, bool planar_prior, bool multi_geometry = false)
 {
     std::string dense_folder = model.root_folder;
-    std::string imageName = model.image_id_to_image_name.at(problem.ref_image_id);
+    std::string imageName = model.image_idx_to_image_name.at(problem.ref_image_id);
     std::cout << "Processing image " << imageName << "..." << std::endl;
     cudaSetDevice(0);
 
-    ACMP acmp(model.image_id_to_image_name, model.image_id_to_camera, model.depth_folder, model.normal_folder, model.image_folder);
+    ACMP acmp(model.image_idx_to_image_name, model.image_idx_to_camera, model.depth_folder, model.normal_folder, model.image_folder);
     if (geom_consistency) {
         acmp.SetGeomConsistencyParams(multi_geometry);
     }

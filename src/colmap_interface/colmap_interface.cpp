@@ -44,7 +44,7 @@ void ReadCamerasBinary(std::unordered_map<camera_t, Camera>& cameras, const std:
     }
 }
 
-void ReadImagesBinary(std::unordered_map<image_t, Image>& images, const std::string& path) {
+void ReadImagesBinary(std::vector<std::pair<image_t, Image> > &images, const std::string& path) {
     std::ifstream file(path, std::ios::binary);
     CHECK(file.is_open()) << path;
 
@@ -86,7 +86,7 @@ void ReadImagesBinary(std::unordered_map<image_t, Image>& images, const std::str
             image.keypoints[j] = std::pair<Eigen::Vector2d, point3D_t>(Eigen::Vector2d(x, y), point3D_idx);
         }
 
-        images.emplace(image.image_id, image);
+        images.emplace_back(image.image_id, image);
     }
 }
 
@@ -152,7 +152,7 @@ void ReadCamerasTxt(std::unordered_map<camera_t, Camera>& cameras, const std::st
     }
 }
 
-void ReadImagesTxt(std::unordered_map<image_t, Image>& images, const std::string& path) {
+void ReadImagesTxt(std::vector<std::pair<image_t, Image>>& images, const std::string& path) {
     images.clear();
 
     std::ifstream file(path);
@@ -239,7 +239,7 @@ void ReadImagesTxt(std::unordered_map<image_t, Image>& images, const std::string
             }
         }
 
-        images.emplace(image.image_id, image);
+        images.emplace_back(image.image_id, image);
     }
 }
 
@@ -315,22 +315,40 @@ void ReadPoints3DTxt(std::unordered_map<point3D_t, Point3D>& points3D, const std
 
 bool Model::Read(){
     std::string path = root_folder + "/" + model_folder;
+
+    std::vector<std::pair<colmap::image_t, colmap::Image>> images_orig;    // id ===> image
     if (ExistsFile(path + "/cameras.bin") &&
             ExistsFile(path + "/images.bin") &&
             ExistsFile(path + "/points3D.bin")) {
         VLOG(2) << "reading binary model...";
         colmap::ReadCamerasBinary(cameras, path + "/cameras.bin");
-        colmap::ReadImagesBinary(images, path + "/images.bin");
+        colmap::ReadImagesBinary(images_orig, path + "/images.bin");
         colmap::ReadPoints3DBinary(points, path + "/points3D.bin");
     } else if (ExistsFile(path + "/cameras.txt") &&
                ExistsFile(path + "/images.txt") &&
                ExistsFile(path + "/points3D.txt")) {
         VLOG(2) << "reading txt model...";
         colmap::ReadCamerasTxt(cameras, path + "/cameras.txt");
-        colmap::ReadImagesTxt(images, path + "/images.txt");
+        colmap::ReadImagesTxt(images_orig, path + "/images.txt");
         colmap::ReadPoints3DTxt(points, path + "/points3D.txt");
     } else {
         LOG(FATAL) << "cameras, images, points3D files do not exist at " << path;
+    }
+
+    std::unordered_map<colmap::image_t, colmap::image_t> image_id_to_idx;
+    colmap::image_t image_idx = 0;
+    for(const auto& pair : images_orig) {
+        image_id_to_idx[pair.first] = image_idx;
+        images[image_idx] = pair.second;
+        image_idx++;
+    }
+    {std::vector<std::pair<colmap::image_t, colmap::Image>> temp; images_orig.swap(temp);}
+
+    // change image id to idx in tracks
+    for(auto& pair : points) {
+        for(auto& track : pair.second.track) {
+            track.first = image_id_to_idx.at(track.first);
+        }
     }
 
     VLOG(2) << "computing depth_ranges...";
@@ -354,14 +372,14 @@ bool Model::Read(){
 
     for(const auto& pair : images) {
         colmap::Image image = pair.second;
-        auto image_id = image.image_id;
-        image_id_to_image_name[image_id] = image.name;
+        auto image_idx = pair.first;
+        image_idx_to_image_name[image_idx] = image.name;
 
         colmap::Camera camera_colmap = cameras.at(image.camera_id);
         Camera camera;
         camera.width = camera_colmap.width;
         camera.height = camera_colmap.height;
-        const auto& range = depth_ranges.at(image_id);
+        const auto& range = depth_ranges.at(image_idx);
         camera.depth_min = range.first;
         camera.depth_max = range.second;
 
@@ -378,7 +396,7 @@ bool Model::Read(){
         auto& tcw = camera.t;
         tcw[0] = image.tcw[0]; tcw[1] = image.tcw[1]; tcw[2] = image.tcw[2];
 
-        image_id_to_camera[image_id] = camera;
+        image_idx_to_camera[image_idx] = camera;
     }
 
     // create folders
@@ -411,7 +429,7 @@ void Model::ReduceMemory(){
 
 
 std::unordered_map<int, std::vector<int>> Model::GetMaxOverlappingImages(const size_t num_images, const double min_triangulation_angle) const {
-    std::unordered_map<int, std::vector<int>> overlapping_images(images.size());
+    std::unordered_map<int, std::vector<int>> overlapping_images;
 
     const double min_triangulation_angle_rad = min_triangulation_angle * 0.0174532925199432954743716805978692718781530857086181640625;
 
@@ -421,19 +439,19 @@ std::unordered_map<int, std::vector<int>> Model::GetMaxOverlappingImages(const s
     const auto triangulation_angles = ComputeTriangulationAngles(kTriangulationAnglePercentile);
 
     for (const auto& pair : images) {
-        auto image_id = pair.first;
-        if(!shared_num_points.count(image_id) || !triangulation_angles.count(image_id)) {
-            std::cout << "image name: " << images.at(image_id).name << std::endl;
-            if(depth_ranges.count(image_id)) {
-                std::cout << "depth range: " << depth_ranges.at(image_id).first << " to " << depth_ranges.at(image_id).second << std::endl;
+        auto image_idx = pair.first;
+        if(!shared_num_points.count(image_idx) || !triangulation_angles.count(image_idx)) {
+            std::cout << "image name: " << images.at(image_idx).name << std::endl;
+            if(depth_ranges.count(image_idx)) {
+                std::cout << "depth range: " << depth_ranges.at(image_idx).first << " to " << depth_ranges.at(image_idx).second << std::endl;
             } else {
                 std::cerr << "how does this come?" << std::endl;
             }
 
             continue;
         }
-        const auto& shared_images = shared_num_points.at(image_id);
-        const auto& overlapping_triangulation_angles = triangulation_angles.at(image_id);
+        const auto& shared_images = shared_num_points.at(image_idx);
+        const auto& overlapping_triangulation_angles = triangulation_angles.at(image_idx);
 
         std::vector<std::pair<int, int>> ordered_images;
         ordered_images.reserve(shared_images.size());
@@ -461,9 +479,9 @@ std::unordered_map<int, std::vector<int>> Model::GetMaxOverlappingImages(const s
             });
         }
 
-        overlapping_images[image_id].reserve(eff_num_images);
+        overlapping_images[image_idx].reserve(eff_num_images);
         for (size_t i = 0; i < eff_num_images; ++i) {
-            overlapping_images[image_id].push_back(ordered_images[i].first);
+            overlapping_images[image_idx].push_back(ordered_images[i].first);
         }
     }
 
@@ -526,14 +544,14 @@ std::unordered_map<int, std::map<int, double>> Model::ComputeTriangulationAngles
     for(const auto& id_point_pair : points) {
         const auto& point = id_point_pair.second;
         for (size_t i = 0; i < point.track.size(); ++i) {
-            const int image_id1 = point.track[i].first;
+            const int image_idx1 = point.track[i].first;
             for (size_t j = 0; j < i; ++j) {
-                const int image_id2 = point.track[j].first;
-                if (image_id1 != image_id2) {
+                const int image_idx2 = point.track[j].first;
+                if (image_idx1 != image_idx2) {
                     const double angle = CalculateTriangulationAngle(
-                                proj_centers.at(image_id1), proj_centers.at(image_id2), point.xyz);
-                    all_triangulation_angles[image_id1][image_id2].push_back(angle);
-                    all_triangulation_angles[image_id2][image_id1].push_back(angle);
+                                proj_centers.at(image_idx1), proj_centers.at(image_idx2), point.xyz);
+                    all_triangulation_angles[image_idx1][image_idx2].push_back(angle);
+                    all_triangulation_angles[image_idx2][image_idx1].push_back(angle);
                 }
             }
         }
@@ -541,10 +559,10 @@ std::unordered_map<int, std::map<int, double>> Model::ComputeTriangulationAngles
 
     std::unordered_map<int, std::map<int, double>> triangulation_angles(images.size());
     for(const auto& pair : all_triangulation_angles) {
-        auto image_id1 = pair.first;
+        auto image_idx1 = pair.first;
         const auto& overlapping_images = pair.second;
         for (const auto& image : overlapping_images) {
-            triangulation_angles[image_id1].emplace(image.first, Percentile(image.second, percentile));
+            triangulation_angles[image_idx1].emplace(image.first, Percentile(image.second, percentile));
         }
     }
 
@@ -556,22 +574,22 @@ std::unordered_map<int, std::pair<double, double> > Model::ComputeDepthRanges() 
     for (const auto& pair : points) {
         auto point = pair.second;
         for (const auto& track : point.track) {
-            auto image_id = track.first;
-            const auto& image = images.at(image_id);
+            auto image_idx = track.first;
+            const auto& image = images.at(image_idx);
             const double depth = image.Project(point.xyz)[2];
             if (depth > 0) {
-                depths[image_id].push_back(depth);
+                depths[image_idx].push_back(depth);
             }
         }
     }
 
     std::unordered_map<int, std::pair<double, double>> depth_ranges(depths.size());
     for(auto& pair : depths) {
-        int image_id = pair.first;
+        int image_idx = pair.first;
         auto& image_depths = pair.second;
         std::sort(image_depths.begin(), image_depths.end());
 
-        auto& depth_range = depth_ranges[image_id];
+        auto& depth_range = depth_ranges[image_idx];
 
         const double kMinPercentile = 0.01;
         const double kMaxPercentile = 0.99;
@@ -632,4 +650,20 @@ void CreateFolder(std::string abspath) {
     mode_t target_mode = 0777;
     if (mkdir(abspath.c_str(), target_mode) == 0)
         chmod(abspath.c_str(), target_mode);
+}
+
+void WritePointsVisibility(
+    const std::string& path,
+    const std::vector<std::vector<int>>& points_visibility) {
+  std::fstream file(path, std::ios::out | std::ios::binary);
+  CHECK(file.is_open()) << path;
+
+  colmap::WriteBinaryLittleEndian<uint64_t>(&file, points_visibility.size());
+
+  for (const auto& visibility : points_visibility) {
+    colmap::WriteBinaryLittleEndian<uint32_t>(&file, visibility.size());
+    for (const auto& image_idx : visibility) {
+      colmap::WriteBinaryLittleEndian<uint32_t>(&file, image_idx);
+    }
+  }
 }
