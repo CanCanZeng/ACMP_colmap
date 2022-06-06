@@ -152,11 +152,11 @@ void RunFusion(const Model& model, bool geom_consistency)
     // read all data
     for (const auto& pair : model.covis_vec) {
         int ref_image_id = pair.first;
-        std::string image_name = model.image_id_to_image_name.at(ref_image_id);
+        std::string image_name = model.image_idx_to_image_name.at(ref_image_id);
         std::string image_path = model.root_folder + "/" + model.image_folder + "/" + image_name;
         cv::Mat_<cv::Vec3b> image = cv::imread (image_path, cv::IMREAD_COLOR);
 
-        Camera camera = model.image_id_to_camera.at(ref_image_id);
+        Camera camera = model.image_idx_to_camera.at(ref_image_id);
 
         std::string suffix = ".photometric.bin";
         if (geom_consistency) {
@@ -185,7 +185,7 @@ void RunFusion(const Model& model, bool geom_consistency)
     for (const auto& pair : model.covis_vec) {
         int ref_image_id = pair.first;
         std::vector<int> src_image_ids = pair.second;
-        std::cout << "Fusing image " << model.image_id_to_image_name.at(ref_image_id) << std::endl;
+        std::cout << "Fusing image " << model.image_idx_to_image_name.at(ref_image_id) << std::endl;
 
         const auto& ref_image = images.at(ref_image_id);
         const auto& ref_camera = cameras.at(ref_image_id);
