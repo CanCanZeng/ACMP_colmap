@@ -174,9 +174,11 @@ int main(int argc, char** argv)
 
     bool geom_consistency = false;
     bool planar_prior = true;
-    for (size_t i = 0; i < num_images; ++i) {
-        ProcessProblem(problems[i], model, geom_consistency, planar_prior, false, depthmap_max_resolution);
-    }
+    cv::parallel_for_(cv::Range(0, num_images), [&](const cv::Range& range) {
+        for (size_t i = range.start; i < range.end; ++i) {
+            ProcessProblem(problems[i], model, geom_consistency, planar_prior, false, depthmap_max_resolution);
+        }
+    });
 
     bool multi_geometry = false;
     int geom_iteration = 2;
@@ -188,9 +190,11 @@ int main(int argc, char** argv)
         } else {
             multi_geometry = true;
         }
-        for (size_t i = 0; i < num_images; ++i) {
-            ProcessProblem(problems[i], model, geom_consistency, planar_prior, multi_geometry, depthmap_max_resolution);
-        }
+        cv::parallel_for_(cv::Range(0, num_images), [&](const cv::Range& range) {
+            for (size_t i = range.start; i < range.end; ++i) {
+                ProcessProblem(problems[i], model, geom_consistency, planar_prior, multi_geometry, depthmap_max_resolution);
+            }
+        });
     }
 
     double t_end = cv::getTickCount();
