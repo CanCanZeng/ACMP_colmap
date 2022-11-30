@@ -71,8 +71,11 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
                 cv::line(srcImage, triangle.pt2, triangle.pt3, cv::Scalar(0, 0, 255));
             }
         }
+
+#ifdef _DEBUG
         std::string triangulation_path = dense_folder + "/" + model.depth_folder + "/" + imageName + ".png";
         cv::imwrite(triangulation_path, srcImage);
+#endif
 
         cv::Mat_<float> mask_tri = cv::Mat::zeros(height, width, CV_32FC1);
         std::vector<float4> planeParams_tri;
