@@ -1,3 +1,5 @@
+#include <malloc.h>
+
 #include "colmap_interface/colmap_interface.h"
 
 void StoreColorPlyFileBinaryPointCloud (const std::string &plyFilePath, const std::vector<PointList> &pc)
@@ -5,7 +7,7 @@ void StoreColorPlyFileBinaryPointCloud (const std::string &plyFilePath, const st
     std::cout << "store 3D points to ply file" << std::endl;
 
     FILE *outputPly;
-    outputPly=fopen(plyFilePath.c_str(), "wb");
+    outputPly = fopen(plyFilePath.c_str(), "wb");
 
     /*write header*/
     fprintf(outputPly, "ply\n");
@@ -23,36 +25,29 @@ void StoreColorPlyFileBinaryPointCloud (const std::string &plyFilePath, const st
     fprintf(outputPly, "end_header\n");
 
     //write data
-#pragma omp parallel for
+    float buffer_vertex[6];
+    char buffer_color[3];
     for(size_t i = 0; i < pc.size(); i++) {
         const PointList &p = pc[i];
-        float3 X = p.coord;
-        const float3 normal = p.normal;
-        const float3 color = p.color;
-        const char b_color = (int)color.x;
-        const char g_color = (int)color.y;
-        const char r_color = (int)color.z;
+        const float3& X = p.coord;
+        const float3& normal = p.normal;
+        const float3& color = p.color;
+        buffer_vertex[0] = X.x;
+        buffer_vertex[1] = X.y;
+        buffer_vertex[2] = X.z;
+        buffer_vertex[3] = normal.x;
+        buffer_vertex[4] = normal.y;
+        buffer_vertex[5] = normal.z;
 
-        if(!(X.x < FLT_MAX && X.x > -FLT_MAX) || !(X.y < FLT_MAX && X.y > -FLT_MAX) || !(X.z < FLT_MAX && X.z >= -FLT_MAX)){
-            X.x = 0.0f;
-            X.y = 0.0f;
-            X.z = 0.0f;
-        }
-#pragma omp critical
-        {
-            fwrite(&X.x,      sizeof(X.x), 1, outputPly);
-            fwrite(&X.y,      sizeof(X.y), 1, outputPly);
-            fwrite(&X.z,      sizeof(X.z), 1, outputPly);
-            fwrite(&normal.x, sizeof(normal.x), 1, outputPly);
-            fwrite(&normal.y, sizeof(normal.y), 1, outputPly);
-            fwrite(&normal.z, sizeof(normal.z), 1, outputPly);
-            fwrite(&r_color,  sizeof(char), 1, outputPly);
-            fwrite(&g_color,  sizeof(char), 1, outputPly);
-            fwrite(&b_color,  sizeof(char), 1, outputPly);
-        }
+        buffer_color[0] = color.z;
+        buffer_color[1] = color.y;
+        buffer_color[2] = color.x;
 
+        fwrite(buffer_vertex, sizeof(buffer_vertex), 1, outputPly);
+        fwrite(buffer_color, sizeof(buffer_color), 1, outputPly);
     }
     fclose(outputPly);
+    std::cout << "save ply file done" << std::endl;
 }
 
 void  RescaleImageAndCamera(cv::Mat_<cv::Vec3b> &src, cv::Mat_<cv::Vec3b> &dst, cv::Mat_<float> &depth, Camera &camera)
@@ -294,6 +289,16 @@ void RunFusion(const Model& model, bool geom_consistency)
                 }
             }
         }
+    }
+
+    // release memory
+    {
+        images.clear();
+        cameras.clear();
+        depths.clear();
+        normals.clear();
+        malloc_trim(0);
+        std::cout << "realease memory done" << std::endl;
     }
 
     std::string ply_path = model.root_folder + "/fused.ply";
