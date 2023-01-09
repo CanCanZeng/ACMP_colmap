@@ -180,6 +180,7 @@ void RunFusion(const Model& model, bool geom_consistency)
     }
 
     std::vector<PointList> PointCloud;
+    std::vector<std::vector<int>> fused_points_visibility;
     PointCloud.clear();
 
     for (const auto& pair : model.covis_vec) {
@@ -214,6 +215,9 @@ void RunFusion(const Model& model, bool geom_consistency)
                 cv::Vec3b ref_color = ref_image.at<cv::Vec3b>(r, c);
                 float consistent_Color[3] = {(float)ref_color[0], (float)ref_color[1], (float)ref_color[2]};
                 int num_consistent = 0;
+
+                std::unordered_set<int> fused_point_visibility;
+                fused_point_visibility.insert(ref_image_id);
 
                 for (int j = 0; j < num_ngb; ++j) {
                     int src_image_id = src_image_ids[j];
@@ -258,6 +262,8 @@ void RunFusion(const Model& model, bool geom_consistency)
 
                             used_list[j].x = src_c;
                             used_list[j].y = src_r;
+
+                            fused_point_visibility.insert(src_image_id);
                             num_consistent++;
                         }
                     }
@@ -277,6 +283,8 @@ void RunFusion(const Model& model, bool geom_consistency)
                     point3D.normal = make_float3(consistent_normal[0], consistent_normal[1], consistent_normal[2]);
                     point3D.color = make_float3(consistent_Color[0], consistent_Color[1], consistent_Color[2]);
                     PointCloud.push_back(point3D);
+                    fused_points_visibility.emplace_back(fused_point_visibility.begin(),
+                                                         fused_point_visibility.end());
 
                     for (int j = 0; j < num_ngb; ++j) {
                         if (used_list[j].x == -1)
@@ -288,8 +296,9 @@ void RunFusion(const Model& model, bool geom_consistency)
         }
     }
 
-    std::string ply_path = model.root_folder + "/ACMP_model.ply";
+    std::string ply_path = model.root_folder + "/fused.ply";
     StoreColorPlyFileBinaryPointCloud (ply_path, PointCloud);
+    WritePointsVisibility(ply_path + ".vis", fused_points_visibility);
 }
 
 int main(int argc, char** argv)
