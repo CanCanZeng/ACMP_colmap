@@ -1,5 +1,6 @@
 #include "colmap_interface/colmap_interface.h"
 #include "ACMP.h"
+#include <thread>
 
 void CreateProblems(const Model& model, std::vector<Problem>& problems) {
     for (const auto& pair : model.covis_vec) {
@@ -158,9 +159,17 @@ int main(int argc, char** argv)
     FLAGS_v = 2;
 
     if (argc < 3) {
-        std::cout << "USAGE: ACMP dense_folder depthmap_max_resolution" << std::endl;
+        std::cout << "USAGE: ACMP dense_folder depthmap_max_resolution num_threads(optional)" << std::endl;
         return -1;
     }
+
+    int num_threads = std::thread::hardware_concurrency();
+    if (argc == 4) {
+        if (std::atoi(argv[3]) > 0)
+            num_threads = std::atoi(argv[3]);
+    }
+    cv::setNumThreads(num_threads);
+    std::cout << "num of threads = " << num_threads << std::endl;
 
     std::string dense_folder = argv[1];
     int depthmap_max_resolution = std::stoi(argv[2]);
