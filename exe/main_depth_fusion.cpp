@@ -178,10 +178,11 @@ void RunFusion(const Model& model, bool geom_consistency)
     std::vector<std::vector<int>> fused_points_visibility;
     PointCloud.clear();
 
+    int fused_image_idx = 1;
     for (const auto& pair : model.covis_vec) {
         int ref_image_id = pair.first;
         std::vector<int> src_image_ids = pair.second;
-        std::cout << "Fusing image " << model.image_idx_to_image_name.at(ref_image_id) << std::endl;
+        std::cout << "Fusing image " << model.image_idx_to_image_name.at(ref_image_id) << "    " << fused_image_idx++ << "/" << model.covis_vec.size();
 
         const auto& ref_image = images.at(ref_image_id);
         const auto& ref_camera = cameras.at(ref_image_id);
@@ -195,14 +196,14 @@ void RunFusion(const Model& model, bool geom_consistency)
         std::vector<int2> used_list(num_ngb, make_int2(-1, -1));
         for (int r =0; r < rows; ++r) {
             for (int c = 0; c < cols; ++c) {
-                if (ref_mask.at<uchar>(r, c) == 1)
+                if (ref_mask.at<uchar>(r, c) > 128)
                     continue;
                 float ref_depth = ref_depthmap.at<float>(r, c);
-                cv::Vec3f ref_normal = ref_normalmap.at<cv::Vec3f>(r, c);
-                ref_normal = TransformNormal(ref_camera, ref_normal);
-
                 if (ref_depth <= 0.0)
                     continue;
+
+                cv::Vec3f ref_normal = ref_normalmap.at<cv::Vec3f>(r, c);
+                ref_normal = TransformNormal(ref_camera, ref_normal);
 
                 float3 PointX = Get3DPointonWorld(c, r, ref_depth, ref_camera);
                 float3 consistent_Point = PointX;
@@ -230,7 +231,7 @@ void RunFusion(const Model& model, bool geom_consistency)
                     int src_r = int(point.y + 0.5f);
                     int src_c = int(point.x + 0.5f);
                     if (src_c >= 0 && src_c < src_cols && src_r >= 0 && src_r < src_rows) {
-                        if (src_mask.at<uchar>(src_r, src_c) == 1)
+                        if (src_mask.at<uchar>(src_r, src_c) > 128)
                             continue;
 
                         float src_depth = src_depthmap.at<float>(src_r, src_c);
@@ -284,11 +285,12 @@ void RunFusion(const Model& model, bool geom_consistency)
                     for (int j = 0; j < num_ngb; ++j) {
                         if (used_list[j].x == -1)
                             continue;
-                        masks.at(src_image_ids[j]).at<uchar>(used_list[j].y, used_list[j].x) = 1;
+                        masks.at(src_image_ids[j]).at<uchar>(used_list[j].y, used_list[j].x) = 255;
                     }
                 }
             }
         }
+        std::cout << " (" << PointCloud.size() << " points)" << std::endl;
     }
 
     // release memory
