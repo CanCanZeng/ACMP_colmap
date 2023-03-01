@@ -32,7 +32,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     add_definitions(-pedantic)
     add_definitions(-Wno-unused-function)
     add_definitions(-Wno-switch)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -ffast-math -march=native") # extend release-profile with fast-math
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -ffast-math") # extend release-profile with fast-math
 endif()
 
 find_package(OpenMP)
