@@ -19,7 +19,6 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
 {
     std::string dense_folder = model.root_folder;
     std::string imageName = model.image_idx_to_image_name.at(problem.ref_image_id);
-    std::cout << "Processing image " << imageName << "..." << std::endl;
     cudaSetDevice(0);
 
     ACMP acmp(model.image_idx_to_image_name, model.image_idx_to_camera, model.depth_folder, model.normal_folder, model.image_folder);
@@ -58,6 +57,7 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
 
         acmp.GetSupportPoints(support2DPoints);
         const auto triangles = acmp.DelaunayTriangulation(imageRC, support2DPoints);
+#ifdef _DEBUG
         cv::Mat refImage = acmp.GetReferenceImage().clone();
         std::vector<cv::Mat> mbgr(3);
         mbgr[0] = refImage.clone();
@@ -73,7 +73,6 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
             }
         }
 
-#ifdef _DEBUG
         std::string triangulation_path = dense_folder + "/" + model.depth_folder + "/" + imageName + ".png";
         cv::imwrite(triangulation_path, srcImage);
 #endif
@@ -188,9 +187,11 @@ int main(int argc, char** argv)
     bool planar_prior = true;
     cv::parallel_for_(cv::Range(0, num_images), [&](const cv::Range& range) {
         for (size_t i = range.start; i < range.end; ++i) {
+            std::cout << "Processing " << i << "/" << num_images << " problems" << std::endl;
             ProcessProblem(problems[i], model, geom_consistency, planar_prior, false, depthmap_max_resolution);
         }
     });
+    CUDA_SAFE_CALL(cudaDeviceSynchronize());
 
     bool multi_geometry = false;
     int geom_iteration = 2;
@@ -204,9 +205,11 @@ int main(int argc, char** argv)
         }
         cv::parallel_for_(cv::Range(0, num_images), [&](const cv::Range& range) {
             for (size_t i = range.start; i < range.end; ++i) {
+                std::cout << "Processing " << i << "/" << num_images << " problems" << std::endl;
                 ProcessProblem(problems[i], model, geom_consistency, planar_prior, multi_geometry, depthmap_max_resolution);
             }
         });
+        CUDA_SAFE_CALL(cudaDeviceSynchronize());
     }
 
     double t_end = cv::getTickCount();

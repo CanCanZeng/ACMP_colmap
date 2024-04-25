@@ -22,7 +22,7 @@ find_package(Gflags REQUIRED)
 find_package(Glog REQUIRED)
 include_directories(${GFLAGS_INCLUDE_DIRS} ${GLOG_INCLUDE_DIRS})
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3 --use_fast_math --maxrregcount=128 --ptxas-options=-v -std=c++11 --compiler-options -Wall)
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3 --use_fast_math --maxrregcount=128 --ptxas-options=-v -std=c++11 --compiler-options -Wall --default-stream per-thread)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     add_definitions(-std=c++17)
