@@ -114,3 +114,20 @@ void WriteMap(const std::string& path, cv::Mat_<T> &data) {
     colmap::WriteBinaryLittleEndian<uchar>(&binary_file, raw_data);
     binary_file.close();
 }
+
+
+template <typename T>
+void ReadMapHead(
+        size_t& width,
+        size_t& height,
+        size_t& depth,
+        const std::string& path
+        ) {
+    std::fstream text_file(path, std::ios::in | std::ios::binary);
+    CHECK(text_file.is_open()) << path;
+
+    char unused_char;
+    text_file >> width >> unused_char >> height >> unused_char >> depth >>
+        unused_char;
+    text_file.close();
+}

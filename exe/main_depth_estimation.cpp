@@ -15,6 +15,35 @@ void CreateProblems(const Model& model, std::vector<Problem>& problems) {
     }
 }
 
+void SaveCovisInfo(
+    const std::string& file_path,
+    const Model& model,
+    const size_t& max_neighbor = 20
+    ) {
+    std::ofstream ofs(file_path);
+    if (!ofs.is_open()) {
+        std::cerr << "Error! Cannot write to covis file " << file_path << std::endl;
+        return;
+    }
+
+    for (const auto& pair : model.covis_vec) {
+        int ref_idx = pair.first;
+        std::string ref_name = model.image_idx_to_image_name.at(ref_idx);
+        ofs << ref_name << " ";
+        size_t N = std::min(pair.second.size(), max_neighbor);
+        for (size_t i = 0; i < N; i++) {
+            const int src_idx = pair.second[i];
+            std::string src_name = model.image_idx_to_image_name.at(src_idx);
+            ofs << src_name;
+            if (i != N - 1) {
+                ofs << " ";
+            }
+        }
+        ofs << std::endl;
+    }
+    ofs.close();
+}
+
 void ProcessProblem(const Problem &problem, const Model& model, bool geom_consistency, bool planar_prior, bool multi_geometry = false, int depthmap_max_resolution = 3200)
 {
     std::string dense_folder = model.root_folder;
@@ -177,6 +206,8 @@ int main(int argc, char** argv)
     model.Read();
     model.ReduceMemory();
 
+    // SaveCovisInfo(dense_folder + "/covis_info.txt", model, 5);
+
     std::vector<Problem> problems;
     CreateProblems(model, problems);
 
@@ -194,7 +225,7 @@ int main(int argc, char** argv)
     CUDA_SAFE_CALL(cudaDeviceSynchronize());
 
     bool multi_geometry = false;
-    int geom_iteration = 2;
+    int geom_iteration = depthmap_max_resolution >= 640 ? 2 : 1;
     geom_consistency = true;
     planar_prior = false;
     for(int geom_iter = 0; geom_iter < geom_iteration; ++geom_iter) {
