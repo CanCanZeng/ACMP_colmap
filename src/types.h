@@ -36,6 +36,8 @@ struct Camera {
     int width;
     float depth_min;
     float depth_max;
+    float distortion[4] = {0, 0, 0, 0};
+    int distortion_type = 0;  // 0 --> pinhole, 1 --> opencv, 2 --> opencv_fisheye
 };
 
 struct Problem {

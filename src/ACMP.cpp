@@ -2,6 +2,103 @@
 
 #include <cstdarg>
 
+#include <Eigen/Core>
+#include <Eigen/LU>
+template <typename T>
+void OpenCVDistortion(const T* extra_params, const T u, const T v,
+                                   T* du, T* dv) {
+  const T k1 = extra_params[0];
+  const T k2 = extra_params[1];
+  const T p1 = extra_params[2];
+  const T p2 = extra_params[3];
+
+  const T u2 = u * u;
+  const T uv = u * v;
+  const T v2 = v * v;
+  const T r2 = u2 + v2;
+  const T radial = k1 * r2 + k2 * r2 * r2;
+  *du = u * radial + T(2) * p1 * uv + p2 * (r2 + T(2) * u2);
+  *dv = v * radial + T(2) * p2 * uv + p1 * (r2 + T(2) * v2);
+}
+
+template <typename T>
+void OpenCVFisheyeDistortion(const T* extra_params, const T u,
+                                          const T v, T* du, T* dv) {
+  const T k1 = extra_params[0];
+  const T k2 = extra_params[1];
+  const T k3 = extra_params[2];
+  const T k4 = extra_params[3];
+
+  const T r = std::sqrt(u * u + v * v);
+
+  if (r > T(std::numeric_limits<double>::epsilon())) {
+    const T theta = std::atan(r);
+    const T theta2 = theta * theta;
+    const T theta4 = theta2 * theta2;
+    const T theta6 = theta4 * theta2;
+    const T theta8 = theta4 * theta4;
+    const T thetad =
+        theta * (T(1) + k1 * theta2 + k2 * theta4 + k3 * theta6 + k4 * theta8);
+    *du = u * thetad / r - u;
+    *dv = v * thetad / r - v;
+  } else {
+    *du = T(0);
+    *dv = T(0);
+  }
+}
+
+template <typename T>
+void IterativeUndistortion(const T* params, T* u, T* v, bool is_fisheye) {
+  // Parameters for Newton iteration using numerical differentiation with
+  // central differences, 100 iterations should be enough even for complex
+  // camera models with higher order terms.
+  const size_t kNumIterations = 100;
+  const double kMaxStepNorm = 1e-10;
+  const double kRelStepSize = 1e-6;
+
+  Eigen::Matrix2d J;
+  const Eigen::Vector2d x0(*u, *v);
+  Eigen::Vector2d x(*u, *v);
+  Eigen::Vector2d dx;
+  Eigen::Vector2d dx_0b;
+  Eigen::Vector2d dx_0f;
+  Eigen::Vector2d dx_1b;
+  Eigen::Vector2d dx_1f;
+
+  for (size_t i = 0; i < kNumIterations; ++i) {
+    const double step0 = std::max(std::numeric_limits<double>::epsilon(),
+                                  std::abs(kRelStepSize * x(0)));
+    const double step1 = std::max(std::numeric_limits<double>::epsilon(),
+                                  std::abs(kRelStepSize * x(1)));
+    if(is_fisheye) {
+        OpenCVFisheyeDistortion(params, x(0), x(1), &dx(0), &dx(1));
+        OpenCVFisheyeDistortion(params, x(0) - step0, x(1), &dx_0b(0), &dx_0b(1));
+        OpenCVFisheyeDistortion(params, x(0) + step0, x(1), &dx_0f(0), &dx_0f(1));
+        OpenCVFisheyeDistortion(params, x(0), x(1) - step1, &dx_1b(0), &dx_1b(1));
+        OpenCVFisheyeDistortion(params, x(0), x(1) + step1, &dx_1f(0), &dx_1f(1));
+    } else {
+        OpenCVDistortion(params, x(0), x(1), &dx(0), &dx(1));
+        OpenCVDistortion(params, x(0) - step0, x(1), &dx_0b(0), &dx_0b(1));
+        OpenCVDistortion(params, x(0) + step0, x(1), &dx_0f(0), &dx_0f(1));
+        OpenCVDistortion(params, x(0), x(1) - step1, &dx_1b(0), &dx_1b(1));
+        OpenCVDistortion(params, x(0), x(1) + step1, &dx_1f(0), &dx_1f(1));
+    }
+
+    J(0, 0) = 1 + (dx_0f(0) - dx_0b(0)) / (2 * step0);
+    J(0, 1) = (dx_1f(0) - dx_1b(0)) / (2 * step1);
+    J(1, 0) = (dx_0f(1) - dx_0b(1)) / (2 * step0);
+    J(1, 1) = 1 + (dx_1f(1) - dx_1b(1)) / (2 * step1);
+    const Eigen::Vector2d step_x = J.inverse() * (x + dx - x0);
+    x -= step_x;
+    if (step_x.squaredNorm() < kMaxStepNorm) {
+      break;
+    }
+  }
+
+  *u = x(0);
+  *v = x(1);
+}
+
 void StringAppendV(std::string* dst, const char* format, va_list ap) {
   // First try with a small fixed size buffer.
   static const int kFixedBufferSize = 1024;
@@ -107,7 +204,11 @@ ACMP::~ACMP()
     for (int i = 0; i < num_images; ++i) {
         cudaDestroyTextureObject(texture_objects_host.images[i]);
         cudaFreeArray(cuArray[i]);
+
+        delete [] view_dirs_vec_host[i];
+        cudaFree(view_dirs_vec_cuda[i]);  // free contents
     }
+    cudaFree(view_dirs_vec_cuda_cuda);  // free pointers
     cudaFree(texture_objects_cuda);
     cudaFree(cameras_cuda);
     cudaFree(plane_hypotheses_cuda);
@@ -241,6 +342,40 @@ void ACMP::InuputInitialization(const std::string &dense_folder, const Problem &
             depths.push_back(depth);
         }
     }
+
+    // initialize viewing directories
+    for(int i = 0; i < images.size(); i++) {
+        const auto& camera = cameras[i];
+        int width = camera.width;
+        int height = camera.height;
+        view_dirs_vec_host[i] = new float3[width * height];
+
+        double fx = camera.K[0];
+        double fy = camera.K[4];
+        double cx = camera.K[2];
+        double cy = camera.K[5];
+
+        float3* view_dirs = view_dirs_vec_host[i];
+        cv::Mat points(2, width * height, CV_32FC1);
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                double u = (col - cx) / fx;
+                double v = (row - cy) / fy;
+                double w = 1;
+
+                if(camera.distortion_type > 0) {
+                    double distortion[4] = {camera.distortion[0], camera.distortion[1], camera.distortion[2], camera.distortion[3]};
+                    IterativeUndistortion(distortion, &u, &v, camera.distortion_type == 2);
+                }
+
+                double inv_norm = 1.0 / std::sqrt(u * u + v * v + w * w);
+                u *= inv_norm;
+                v *= inv_norm;
+                w *= inv_norm;
+                view_dirs[row * width + col] = make_float3(u, v, w);
+            }
+        }
+    }
 }
 
 void ACMP::CudaSpaceInitialization(const std::string &dense_folder, const Problem &problem)
@@ -270,6 +405,32 @@ void ACMP::CudaSpaceInitialization(const std::string &dense_folder, const Proble
 
         cudaCreateTextureObject(&(texture_objects_host.images[i]), &resDesc, &texDesc, NULL);
     }
+
+    // copy view dirs
+    for (int i = 0; i < num_images; ++i) {
+        int rows = images[i].rows;
+        int cols = images[i].cols;
+
+        cudaError_t cudaStatus = cudaMalloc((void**)&view_dirs_vec_cuda[i], sizeof(float3) * rows * cols);
+        if (cudaStatus != cudaSuccess) {
+            fprintf(stderr, "cudaMalloc failed!\n");
+        }
+        cudaStatus = cudaMemcpy(view_dirs_vec_cuda[i], view_dirs_vec_host[i], sizeof(float3) * rows * cols, cudaMemcpyHostToDevice);
+        if (cudaStatus != cudaSuccess) {
+            fprintf(stderr, "cudaMemcpy failed!\n");
+        }
+    }
+
+    // copy pointers from host to device
+    cudaError_t cudaStatus = cudaMalloc((void**)(&view_dirs_vec_cuda_cuda), sizeof(float3*) * MAX_IMAGES);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!\n");
+    }
+    cudaStatus = cudaMemcpy(view_dirs_vec_cuda_cuda, view_dirs_vec_cuda, sizeof(float3*) * MAX_IMAGES, cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!\n");
+    }
+
     cudaMalloc((void**)&texture_objects_cuda, sizeof(cudaTextureObjects));
     cudaMemcpy(texture_objects_cuda, &texture_objects_host, sizeof(cudaTextureObjects), cudaMemcpyHostToDevice);
 

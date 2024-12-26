@@ -36,7 +36,7 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
 
     cv::Mat_<float> depths = cv::Mat::zeros(height, width, CV_32FC1);
     cv::Mat_<cv::Vec3f> normals = cv::Mat::zeros(height, width, CV_32FC3);
-//    cv::Mat_<float> costs = cv::Mat::zeros(height, width, CV_32FC1);
+    cv::Mat_<float> costs = cv::Mat::zeros(height, width, CV_32FC1);
 
     for (int col = 0; col < width; ++col) {
         for (int row = 0; row < height; ++row) {
@@ -44,9 +44,11 @@ void ProcessProblem(const Problem &problem, const Model& model, bool geom_consis
             float4 plane_hypothesis = acmp.GetPlaneHypothesis(center);
             depths(row, col) = plane_hypothesis.w;
             normals(row, col) = cv::Vec3f(plane_hypothesis.x, plane_hypothesis.y, plane_hypothesis.z);
-//            costs(row, col) = acmp.GetCost(center);
+            costs(row, col) = acmp.GetCost(center);
         }
     }
+
+//    return;
 
     if (planar_prior) {
         std::cout << "Run Planar Prior Assisted PatchMatch MVS ..." << std::endl;

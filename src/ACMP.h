@@ -90,6 +90,10 @@ private:
     float4 *prior_planes_cuda;
     unsigned int *plane_masks_cuda;
 
+    float3* view_dirs_vec_host[MAX_IMAGES];
+    float3* view_dirs_vec_cuda[MAX_IMAGES]; // content on device but pointer on host
+    float3** view_dirs_vec_cuda_cuda;  // just save pointers on divice
+
 public:
     const std::unordered_map<int, std::string>& image_id_to_image_name;
     const std::unordered_map<int, Camera>& image_id_to_camera;
